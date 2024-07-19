@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -eo pipefail
+
+VERSION="1.0"
+CMD="time docker build $@ --tag nano_k2taxclass:${VERSION} --tag nano_k2taxclass:latest --progress plain ."
+echo $CMD
+eval $CMD

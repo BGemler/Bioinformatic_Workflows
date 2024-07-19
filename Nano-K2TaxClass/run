@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# define the current image to be used by script
+DOCKERIMAGE="nano_k2taxclass"
+
+set -eo pipefail
+
+help() {
+echo -e "Run Kraken2/Bracken taxonomy classification\n\n
+ Usage:\n\n
+
+ ./run [Restrict TaxIDs to MB] [TaxTree Loc] [FASTQ Directory] [Output directory] [Reference DB Location] [Other Tool Options]\n\n
+
+ [Restrict TaxIDs to MB]: TRUE or FALSE. If TRUE, will restrict TaxIDs in abundance tables to microbiome (bacteria, fungi, virus)
+ [TaxTree Loc]: Directory containing NCBI taxonomy files from FTP. Note: always required, but only significant/used if above is TRUE
+
+ All FASTQs within the directory will be processed\n
+ \n"
+}
+
+function check_paths() {
+ # Get absolute result paths for mounting
+ # Note that the directory containing a file is gathered (if applicable)
+ QUERY=$(realpath ${1%/*})
+ RESULT=$(realpath ${2%/*})
+ NUC_REF_GENOME_LOC=$(realpath ${3%/*})
+ PROT_REF_GENOME_LOC=$(realpath ${4%/*})
+ TAXTREE_LOC=$(realpath ${5%/*})
+
+ # Check directories - query and reference genome must exist or error out
+ if ! [[ -d $QUERY ]]; then 
+ echo -e "\nThe directory containing query ${QUERY} doesn\'t exist. 
+         Please check the path provided and re-run the script."; 
+ exit 1;
+ fi
+ if ! [[ -d $NUC_REF_GENOME_LOC ]]; then 
+ echo -e "\nThe directory containing reference genome ${REF_GENOME_LOC} doesn\'t exist. 
+         Please check the path provided and re-run the script."; 
+ exit 1;
+ fi
+ if ! [[ -d $PROT_REF_GENOME_LOC ]]; then 
+ echo -e "\nThe directory containing reference genome ${REF_GENOME_LOC} doesn\'t exist. 
+         Please check the path provided and re-run the script."; 
+ exit 1;
+ fi
+ if ! [[ -d $TAXTREE_LOC ]]; then 
+ echo -e "\nThe directory containing ncbi taxdmp ${TAXTREE_LOC} doesn\'t exist. 
+         Please check the path provided and re-run the script."; 
+ exit 1;
+ fi
+
+ # Results directory can be created if it doesn't exist 
+ if ! [[ -d $RESULT ]]; then
+  # redirect to stderr so function only returns prinft output 
+  echo -e "\nCreating output directory: ${RESULT}\n" >&2 
+  mkdir -p "${RESULT}"
+ fi
+
+ # return the mount path
+ printf " -v %s:/queries/ -v %s:/results/ -v %s:/nuc_index/ -v %s:/prot_index/ -v %s:/taxdmp/" "$QUERY" "$RESULT" "$NUC_REF_GENOME_LOC" "$PROT_REF_GENOME_LOC" "$TAXTREE_LOC";
+}
+
+function check_input_to_list() {
+  ALLOWED_COMMANDS=$1
+  INPUT="$2"
+  echo $ALLOWED_COMMANDS | tr " " '\n' | grep -F -q -x "$INPUT"
+}
+
+# If correct number of arguments given, throw help and exit
+if [[ $# -lt 5 ]]; then help && exit 0; fi
+
+# Check if tool choice is allowable 
+RESTRICT_TAXIDS_MB=$1
+ALLOWED_COMMANDS="TRUE FALSE"
+if ! check_input_to_list "$ALLOWED_COMMANDS" "$RESTRICT_TAXIDS_MB"; then
+  help && exit 1
+fi
+
+TAXTREE_LOC=$2
+FASTQ_DIR=$3
+OUT_DIR=$4
+NUC_REF_GENOME_LOC=$5
+PROT_REF_GENOME_LOC=$6
+ALL_OTHER_INPUT=${@:7}
+
+# Get paths for mounting
+MOUNTPATHS=$(check_paths $FASTQ_DIR $OUT_DIR $NUC_REF_GENOME_LOC $PROT_REF_GENOME_LOC $TAXTREE_LOC)
+
+docker run --rm $MOUNTPATHS -u $(id -u):$(id -g) $DOCKERIMAGE /scripts/main.py $RESTRICT_TAXIDS_MB $ALL_OTHER_INPUT

@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# define the current image to be used by script
+DOCKERIMAGE="nano_hostremoval"
+
+set -eo pipefail
+
+help() {
+echo -e "Run Host read removal with either Bowtie2 or Kraken2\n\n
+ Usage:\n\n
+
+ ./run [Tool Choice] [Gzip Output] [FASTQ Directory] [Output directory] [Reference Genome Location] [Other Tool Options]\n\n
+
+ [Tool Choice] can be one of: kraken2 or bowtie2
+ [Gzip Output] can be one of: TRUE or FALSE
+ If TRUE, resulting files will be gzipped (e.g., .gz)
+
+ All FASTQs within the directory will be processed\n
+ \n"
+}
+
+function check_paths() {
+ # Get absolute result paths for mounting
+ # Note that the directory containing a file is gathered (if applicable)
+ QUERY=$(realpath ${1%/*})
+ RESULT=$(realpath ${2%/*})
+ REF_GENOME_LOC=$(realpath ${3%/*})
+
+ # Check directories - query and reference genome must exist or error out
+ if ! [[ -d $QUERY ]]; then 
+ echo -e "\nThe directory containing query ${QUERY} doesn\'t exist. 
+         Please check the path provided and re-run the script."; 
+ exit 1;
+ fi
+ if ! [[ -d $REF_GENOME_LOC ]]; then 
+ echo -e "\nThe directory containing reference genome ${REF_GENOME_LOC} doesn\'t exist. 
+         Please check the path provided and re-run the script."; 
+ exit 1;
+ fi
+
+ # Results directory can be created if it doesn't exist 
+ if ! [[ -d $RESULT ]]; then
+  # redirect to stderr so function only returns prinft output 
+  echo -e "\nCreating output directory: ${RESULT}\n" >&2 
+  mkdir -p "${RESULT}"
+ fi
+
+ # return the mount path
+ printf " -v %s:/queries/ -v %s:/results/ -v %s:/genome_dir/" "$QUERY" "$RESULT" "$REF_GENOME_LOC";
+}
+
+function check_input_to_list() {
+  ALLOWED_COMMANDS=$1
+  INPUT="$2"
+  echo $ALLOWED_COMMANDS | tr " " '\n' | grep -F -q -x "$INPUT"
+}
+
+# If correct number of arguments given, throw help and exit
+if [[ $# -lt 5 ]]; then help && exit 0; fi
+
+# Check if tool choice is allowable 
+TOOL_CHOICE=$1
+TOOL_ALLOWED_COMMANDS="bowtie2 kraken2"
+if ! check_input_to_list "$TOOL_ALLOWED_COMMANDS" "$TOOL_CHOICE"; then
+  help && exit 1
+fi
+
+# Determine if output should be gzipped
+GZIP_OUT=$2
+GZIP_ALLOWED_COMMANDS="TRUE FALSE"
+if ! check_input_to_list "$GZIP_ALLOWED_COMMANDS" "$GZIP_OUT"; then
+  help && exit 1
+fi
+
+FASTQ_DIR=$3
+OUT_DIR=$4
+REF_GENOME_LOC=$5
+ALL_OTHER_INPUT=${@:6}
+
+# Get paths for mounting
+MOUNTPATHS=$(check_paths $FASTQ_DIR $OUT_DIR $REF_GENOME_LOC)
+
+# Get just the file name for the reference genome
+REF_GENOME_FILE="${REF_GENOME_LOC##*/}"
+if [[ -z $REF_GENOME_FILE ]]; then
+  REF_GENOME_FILE="."
+fi
+
+docker run --rm $MOUNTPATHS -u $(id -u):$(id -g) $DOCKERIMAGE /scripts/main.py $TOOL_CHOICE $GZIP_OUT $REF_GENOME_FILE $ALL_OTHER_INPUT
