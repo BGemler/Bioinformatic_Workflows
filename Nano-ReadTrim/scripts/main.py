@@ -40,13 +40,13 @@ for base_id in sampleid_fastq_dict:
         if gzip_output == "TRUE":
             forward_paired = outdir_loc + base_id + "-trim_R1.fastq.gz"
             reverse_paired = outdir_loc + base_id + "-trim_R2.fastq.gz"
-            forward_unpaired = "/dev/null/R1.fastq.gz"
-            reverse_unpaired = "/dev/null/R2.fastq.gz"
+            forward_unpaired = "/tmp/R1.fastq.gz"
+            reverse_unpaired = "/tmp/R2.fastq.gz"
         elif gzip_output == "FALSE":
             forward_paired = outdir_loc + base_id + "-trim_R1.fastq"
             reverse_paired = outdir_loc + base_id + "-trim_R2.fastq"
-            forward_unpaired = "/dev/null/R1.fastq"
-            reverse_unpaired = "/dev/null/R2.fastq"
+            forward_unpaired = "/tmp/R1.fastq"
+            reverse_unpaired = "/tmp/R2.fastq"
         else:
             raise Exception("Unallowed gzip_out (TRUE or FALSE):", gzip_output)
 
