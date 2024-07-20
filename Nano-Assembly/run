@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# define the current image to be used by script
+DOCKERIMAGE="nano_assembly"
+
+set -eo pipefail
+
+help() {
+echo -e "Run Read Assembly with SPAdes\n\n
+ Usage:\n\n
+
+ ./run [FASTQ Directory] [Output directory] [Additional Flags]\n\n
+
+ All FASTQ pairs within the directory will be processed independently\n
+ \n"
+}
+
+function check_paths() {
+ # Get absolute result paths for mounting
+ # Note that the directory containing a file is gathered (if applicable)
+ QUERY=$(realpath ${1%/*})
+ RESULT=$(realpath ${2%/*})
+
+ # Check directories - query must exist or error out
+ if ! [[ -d $QUERY ]]; then 
+ echo -e "\nThe directory containing query ${QUERY} doesn\'t exist. 
+         Please check the path provided and re-run the script."; 
+ exit 1;
+ fi
+
+ # Results directory can be created if it doesn't exist 
+ if ! [[ -d $RESULT ]]; then
+  # redirect to stderr so function only returns prinft output 
+  echo -e "\nCreating output directory: ${RESULT}\n" >&2 
+  mkdir -p "${RESULT}"
+ fi
+
+ # return the mount path
+ printf " -v %s:/queries/ -v %s:/results/" "$QUERY" "$RESULT";
+}
+
+function check_input_to_list() {
+  ALLOWED_COMMANDS=$1
+  INPUT="$2"
+  echo $ALLOWED_COMMANDS | tr " " '\n' | grep -F -q -x "$INPUT"
+}
+
+# If incorrect number of arguments given, throw help and exit
+if [[ $# -lt 2 ]]; then help && exit 0; fi
+
+FASTQ_DIR=$1
+OUT_DIR=$2
+ALL_OTHER_INPUT=${@:3}
+
+# Get paths for mounting
+MOUNTPATHS=$(check_paths $FASTQ_DIR $OUT_DIR)
+
+docker run --rm $MOUNTPATHS -u $(id -u):$(id -g) $DOCKERIMAGE /scripts/main.py $ALL_OTHER_INPUT
