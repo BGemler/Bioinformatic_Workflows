@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Further optimization opportunities:
-# Fastp maxes out at 16 threads -> multiple processes?
-# Bracken is single threaded -> multiple processes?
-
 # Define some variables/paths
 threads=8
 job_ID="Fredrick_1"
