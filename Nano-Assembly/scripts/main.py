@@ -11,10 +11,15 @@ import matplotlib.pyplot as plt
 from utils import find_sample_fastqs
 
 spades_exe = "/SPAdes-4.0.0-Linux/bin/spades.py"
+quast_exe = "python3 /quast-5.2.0/quast.py"
 
 query_loc = "/queries/"
 outdir_loc = "/results/"
-other_input_flags = sys.argv[1:]
+
+refgenome_loc = sys.argv[1].split("/")[-1]
+refgene_loc = sys.argv[2].split("/")[-1]
+
+other_input_flags = sys.argv[3:]
 
 # Make plotting output loc
 plotting_out_loc = outdir_loc + "contig-plots/"
@@ -34,19 +39,23 @@ for base_id in sampleid_fastq_dict:
     R1, R2 = sampleid_fastq_dict[base_id]
 
     base_id_result_dir = outdir_loc + base_id + "/"
-    os.makedirs(base_id_result_dir, exist_ok=True)
+    #os.makedirs(base_id_result_dir, exist_ok=True)
 
     command = spades_exe + \
                 " -1 " + R1 + \
                 " -2 " + R2 + \
                 " -o " + base_id_result_dir
     command += " " + flat_flags
+    print(command)
+    os.system(command)
+    """
     process = subprocess.run(command.split(), stdout=subprocess.PIPE)
     if process.returncode != 0:
         raise Exception("Error running SPAdes", command, "Error:", process.returncode)
+    """
 
     # get contigs, coverage
-    contig_loc = base_id_result_dir + "K73/final_contigs.fasta"
+    contig_loc = base_id_result_dir + "contigs.fasta"
     all_coverages = []
     with open(contig_loc, "r") as f:
         for row in f:
@@ -62,3 +71,17 @@ for base_id in sampleid_fastq_dict:
     plt.ylabel("# of Contigs per Bin")
     plt.savefig(plotting_out_loc + base_id + "-contig_coverages.png", bbox_inches = 'tight')
     plt.close()
+
+    # Run QUAST to evaluate assembly quality 
+    quast_out_loc = base_id_result_dir + "quast_output/"
+    command = quast_exe + \
+                " " + contig_loc + \
+                " -1 " + R1 + \
+                " -2 " + R2 + \
+                " -o " + quast_out_loc
+    if refgenome_loc != "NA":
+        command += " -r " + "/refgenomes/" + refgenome_loc
+    if refgene_loc != "NA":
+        command += " -g " + "/refgenomes/" + refgene_loc
+    
+    os.system(command)

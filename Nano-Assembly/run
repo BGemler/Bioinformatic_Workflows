@@ -9,7 +9,9 @@ help() {
 echo -e "Run Read Assembly with SPAdes\n\n
  Usage:\n\n
 
- ./run [FASTQ Directory] [Output directory] [Additional Flags]\n\n
+ ./run [FASTQ Directory] [Reference Genome filepath] [Reference Genome Genes filepath] [Output directory] [Additional Flags]\n\n
+
+ If NOT supplying reference genome and/or reference genes, enter 'NA'
 
  All FASTQ pairs within the directory will be processed independently\n
  \n"
@@ -19,11 +21,17 @@ function check_paths() {
  # Get absolute result paths for mounting
  # Note that the directory containing a file is gathered (if applicable)
  QUERY=$(realpath ${1%/*})
- RESULT=$(realpath ${2%/*})
+ REFGENOME_DIR=$(realpath ${2%/*})
+ RESULT=$(realpath ${3%/*})
 
  # Check directories - query must exist or error out
  if ! [[ -d $QUERY ]]; then 
  echo -e "\nThe directory containing query ${QUERY} doesn\'t exist. 
+         Please check the path provided and re-run the script."; 
+ exit 1;
+ fi
+ if ! [[ -d $REFGENOME_DIR ]]; then 
+ echo -e "\nThe directory containing reference genomes ${REFGENOME_DIR} doesn\'t exist. 
          Please check the path provided and re-run the script."; 
  exit 1;
  fi
@@ -36,7 +44,7 @@ function check_paths() {
  fi
 
  # return the mount path
- printf " -v %s:/queries/ -v %s:/results/" "$QUERY" "$RESULT";
+ printf " -v %s:/queries/ -v %s:/refgenomes/ -v %s:/results/" "$QUERY" $REFGENOME_DIR "$RESULT";
 }
 
 function check_input_to_list() {
@@ -46,13 +54,15 @@ function check_input_to_list() {
 }
 
 # If incorrect number of arguments given, throw help and exit
-if [[ $# -lt 2 ]]; then help && exit 0; fi
+if [[ $# -lt 4 ]]; then help && exit 0; fi
 
 FASTQ_DIR=$1
-OUT_DIR=$2
-ALL_OTHER_INPUT=${@:3}
+REFGENOME_LOC=$2
+REFGENES_LOC=$3
+OUT_DIR=$4
+ALL_OTHER_INPUT=${@:4}
 
 # Get paths for mounting
-MOUNTPATHS=$(check_paths $FASTQ_DIR $OUT_DIR)
+MOUNTPATHS=$(check_paths $FASTQ_DIR $REFGENOME_LOC $OUT_DIR)
 
-docker run --rm $MOUNTPATHS -u $(id -u):$(id -g) $DOCKERIMAGE /scripts/main.py $ALL_OTHER_INPUT
+docker run --rm $MOUNTPATHS -u $(id -u):$(id -g) $DOCKERIMAGE /scripts/main.py $REFGENOME_LOC $REFGENES_LOC $ALL_OTHER_INPUT
