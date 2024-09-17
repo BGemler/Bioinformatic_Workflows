@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-DockerContainers=("Nano-HostRemoval" "Nano-K2TaxClass" "Nano-QualReport" "Nano-ReadTrim" "Nano-SummarizeUtils" "Nano-Assembly")
+DockerContainers=("Nano-HostRemoval" "Nano-K2TaxClass" "Nano-QualReport" "Nano-ReadTrim" "Nano-SummarizeUtils" "Nano-Assembly" "Nano-SNP")
 
 for container in ${DockerContainers[@]}; do
     # Enter container
