@@ -1,8 +1,0 @@
-#!/bin/bash
-
-set -eo pipefail
-
-VERSION="1.0"
-CMD="time docker build $@ --tag nano_summarizeutils:${VERSION} --tag nano_summarizeutils:latest --progress plain ."
-echo $CMD
-eval $CMD
