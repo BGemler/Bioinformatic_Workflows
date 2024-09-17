@@ -12,3 +12,4 @@ fi
 # Download github SPAdes executable package
 cd $SRC_Loc
 wget https://github.com/ablab/spades/releases/download/v4.0.0/SPAdes-4.0.0-Linux.tar.gz
+wget https://github.com/ablab/quast/releases/download/quast_5.2.0/quast-5.2.0.tar.gz
